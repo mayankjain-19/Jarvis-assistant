@@ -1,0 +1,334 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JARVIS Assistant</title>
+
+<style>
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  padding: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: radial-gradient(circle, #12375c, #020712 75%);
+  color: #00eaff;
+  font-family: Arial, sans-serif;
+}
+
+.app {
+  width: 100%;
+  max-width: 620px;
+  padding: 25px;
+  text-align: center;
+  background: #061426;
+  border: 1px solid #00eaff;
+  border-radius: 22px;
+  box-shadow: 0 0 30px #00aaff55;
+}
+
+h1 {
+  letter-spacing: 8px;
+  text-shadow: 0 0 18px #00eaff;
+}
+
+.orb {
+  width: 155px;
+  height: 155px;
+  margin: 28px auto;
+  border: 3px solid #00eaff;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 55px;
+  box-shadow: 0 0 25px #00eaff;
+}
+
+.orb.active {
+  animation: glow 1s infinite alternate;
+}
+
+@keyframes glow {
+  to {
+    box-shadow: 0 0 50px #00eaff;
+    transform: scale(1.04);
+  }
+}
+
+button {
+  padding: 13px 20px;
+  margin: 7px;
+  border: 1px solid #00eaff;
+  border-radius: 25px;
+  background: transparent;
+  color: #00eaff;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #00eaff;
+  color: #00101c;
+}
+
+input, select {
+  width: 90%;
+  max-width: 420px;
+  padding: 13px;
+  margin: 8px;
+  border: 1px solid #00eaff;
+  border-radius: 22px;
+  background: #071c31;
+  color: white;
+}
+
+#status {
+  min-height: 25px;
+  color: #a6edff;
+}
+
+#output {
+  min-height: 30px;
+  color: white;
+  overflow-wrap: anywhere;
+}
+
+#resultLink {
+  display: inline-block;
+  margin: 12px;
+  color: white;
+}
+
+.small {
+  color: #9bb9cc;
+  font-size: 13px;
+  line-height: 1.7;
+}
+</style>
+</head>
+
+<body>
+<div class="app">
+
+  <h1>J.A.R.V.I.S</h1>
+  <p>PERSONAL VOICE ASSISTANT</p>
+
+  <div class="orb" id="orb">◉</div>
+
+  <p id="status">SYSTEM READY</p>
+  <p id="output">Waiting for your command...</p>
+
+  <button onclick="startListening()">
+    🎤 START LISTENING
+  </button>
+
+  <button onclick="stopListening()">
+    STOP
+  </button>
+
+  <a id="resultLink" hidden
+     target="_blank" rel="noopener noreferrer"></a>
+
+  <hr>
+
+  <h3>TYPE A COMMAND</h3>
+
+  <input id="commandInput"
+         placeholder="Type your command here">
+
+  <button onclick="sendCommand()">SEND</button>
+
+  <h3>VOICE LANGUAGE</h3>
+
+  <select id="language">
+    <option value="en-IN">English</option>
+    <option value="hi-IN">Hindi</option>
+  </select>
+
+  <p class="small">
+    Try these commands:<br>
+    Hello JARVIS<br>
+    What is the time?<br>
+    What is the date?<br>
+    Open YouTube<br>
+    Open Google<br>
+    Tum kaun ho?<br>
+    YouTube kholo
+  </p>
+</div>
+
+<script>
+const SpeechRecognition =
+  window.SpeechRecognition ||
+  window.webkitSpeechRecognition;
+
+let recognition = null;
+let listening = false;
+
+const statusBox = document.getElementById("status");
+const outputBox = document.getElementById("output");
+const orb = document.getElementById("orb");
+const resultLink = document.getElementById("resultLink");
+
+function speak(text) {
+  if (!window.speechSynthesis) {
+    statusBox.textContent = "Speech output unavailable.";
+    return;
+  }
+
+  speechSynthesis.cancel();
+
+  const message = new SpeechSynthesisUtterance(text);
+  message.lang = document.getElementById("language").value;
+  message.rate = 1;
+  message.pitch = 1;
+
+  speechSynthesis.speak(message);
+}
+
+function startListening() {
+  if (listening) return;
+
+  if (!SpeechRecognition) {
+    statusBox.textContent =
+      "Voice recognition unavailable. Please type a command.";
+    return;
+  }
+
+  recognition = new SpeechRecognition();
+  recognition.lang = document.getElementById("language").value;
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = function() {
+    listening = true;
+    orb.classList.add("active");
+    statusBox.textContent = "JARVIS IS LISTENING...";
+  };
+
+  recognition.onresult = function(event) {
+    const command =
+      event.results[0][0].transcript.toLowerCase();
+
+    outputBox.textContent = "YOU SAID: " + command;
+    processCommand(command);
+  };
+
+  recognition.onerror = function(event) {
+    statusBox.textContent = "VOICE ERROR: " + event.error;
+  };
+
+  recognition.onend = function() {
+    listening = false;
+    orb.classList.remove("active");
+  };
+
+  try {
+    recognition.start();
+  } catch (error) {
+    statusBox.textContent = error.message;
+  }
+}
+
+function stopListening() {
+  if (recognition) recognition.stop();
+
+  speechSynthesis.cancel();
+  listening = false;
+  orb.classList.remove("active");
+  statusBox.textContent = "JARVIS STOPPED";
+}
+
+function openWebsite(name, url) {
+  resultLink.href = url;
+  resultLink.textContent = "CLICK HERE TO OPEN " + name;
+  resultLink.hidden = false;
+
+  speak(name + " is ready. Click the link on your screen.");
+}
+
+function processCommand(command) {
+  resultLink.hidden = true;
+
+  if (
+    command.includes("hello") ||
+    command.includes("नमस्ते")
+  ) {
+    speak("Hello! How can I help you?");
+  }
+
+  else if (
+    command.includes("time") ||
+    command.includes("समय")
+  ) {
+    speak("The time is " + new Date().toLocaleTimeString());
+  }
+
+  else if (
+    command.includes("date") ||
+    command.includes("तारीख")
+  ) {
+    speak("Today's date is " + new Date().toDateString());
+  }
+
+  else if (
+    command.includes("open youtube") ||
+    command.includes("youtube kholo") ||
+    command.includes("यूट्यूब खोलो")
+  ) {
+    openWebsite("YouTube", "https://www.youtube.com");
+  }
+
+  else if (
+    command.includes("open google") ||
+    command.includes("google kholo") ||
+    command.includes("गूगल खोलो")
+  ) {
+    openWebsite("Google", "https://www.google.com");
+  }
+
+  else if (
+    command.includes("who are you") ||
+    command.includes("tum kaun ho") ||
+    command.includes("तुम कौन हो")
+  ) {
+    speak("I am JARVIS, your personal voice assistant.");
+  }
+
+  else if (command.includes("help")) {
+    speak("You can ask me the time, date, or open Google and YouTube.");
+  }
+
+  else {
+    speak("Sorry, I do not understand this command yet.");
+  }
+
+  statusBox.textContent = "COMMAND PROCESSED";
+}
+
+function sendCommand() {
+  const command = document
+    .getElementById("commandInput")
+    .value.trim()
+    .toLowerCase();
+
+  if (!command) return;
+
+  outputBox.textContent = "YOU TYPED: " + command;
+  processCommand(command);
+}
+
+document.getElementById("commandInput")
+  .addEventListener("keydown", function(event) {
+    if (event.key === "Enter") sendCommand();
+  });
+</script>
+
+</body>
+</html>
